@@ -18,7 +18,7 @@ shared variables
 end variables
 
 global type w_m_preventa_finca from w_cabe_deta
-integer width = 4123
+integer width = 4480
 integer height = 2180
 string title = "Preventa finca"
 string menuname = "m_menu_main_ingreso_d2"
@@ -68,6 +68,7 @@ public subroutine wf_filtra_notify (integer ai_default)
 public subroutine wf_actualizapuntocortedetalle ()
 public subroutine wf_filtrarvariedades (long al_codigofinca)
 public subroutine wf_suprimeopciones ()
+public subroutine wf_filtracajamarcada ()
 end prototypes
 
 public subroutine wf_actualiza_totales (integer ai_fila);Long ll_cantidad, ll_tallosxramo, ll_numerocajas, ll_tallos
@@ -467,6 +468,44 @@ END IF
 
 end subroutine
 
+public subroutine wf_filtracajamarcada ();/*
+wf_filtraCajaMarcada
+11-06-2019
+*/
+DataWindowChild ldw_child
+Long ll_codigoCliente
+
+
+// Cabecera
+IF idw_control.GetRow() > 0 THEN
+	idw_control.SetReDraw(False)
+	ll_codigoCliente = idw_control.GetItemNumber(idw_control.GetRow(), 'sord_cod_clpv')
+	IF IsNull(ll_codigoCliente) THEN ll_codigoCliente = 0
+		
+	IF idw_control.GetChild("sord_cod_cmar", ldw_child) = 1 THEN
+		ldw_child.setfilter("cmar_cod_empr="+string(gnv_ctrdw.il_empresa)+ &
+			" and cmar_cod_clpv = " + String(ll_codigoCliente))
+		ldw_child.Filter()
+	END IF
+	idw_control.SetReDraw(True)
+END IF
+
+// Detalle
+IF idw_detalles.GetRow() > 0 THEN
+	idw_detalles.SetReDraw(False)
+	ll_codigoCliente = idw_control.GetItemNumber(idw_control.GetRow(), 'sord_cod_clpv')
+	IF IsNull(ll_codigoCliente) THEN ll_codigoCliente = 0
+		
+	IF idw_detalles.GetChild("drso_cod_cmar", ldw_child) = 1 THEN
+		ldw_child.setfilter("cmar_cod_empr="+string(gnv_ctrdw.il_empresa)+ &
+			" and cmar_cod_clpv = " + String(ll_codigoCliente))
+		ldw_child.Filter()
+	END IF
+	idw_detalles.SetReDraw(True)
+END IF
+
+end subroutine
+
 on w_m_preventa_finca.create
 int iCurrent
 call super::create
@@ -615,9 +654,6 @@ IF dw_1.RowCount() > 0 THEN
 	ll_factura = dw_1.getitemnumber(dw_1.getrow(),"sord_cod_sord")
 	IF NOT IsNull(ll_factura) THEN
 		dw_imprimir.Retrieve(gnv_ctrdw.il_empresa,gi_finca,ll_factura)
-		
-		gnv_ctrdw.of_cabecera_sucursal(dw_imprimir, 2)	// 17-06-2019
-		
 		li_filas = dw_imprimir.RowCount()
 		IF li_filas > 0 THEN
 			li_retorno = limprimir.of_imprimir( dw_imprimir )
@@ -644,37 +680,6 @@ IF NOT IsNull(ls_nombreCM) AND ls_nombreCM <> '' THEN
 	
 	lpacking.of_creaCajaMarcada(ll_codigoEmpresa, ll_codigoCliente, idw_detalles, ls_nombreCM)
 END IF
-end event
-
-event ue_grabar;call super::ue_grabar;int i,li_valor
-//Boolean lbo_bandera = True
-dwItemStatus l_status
-
-
-//IF idw_detalles.RowCount() = 0 THEN 
-//	MessageBox('Error','Ingrese al menos un detalle')
-//ELSE
-
-	idw_control.AcceptText()
-   idw_control.TriggerEvent("ue_graba")
-
-	idw_detalles.AcceptText()
-	For i=1 to idw_detalles.rowcount()
-		l_status = idw_detalles.GetItemStatus(i, 0, Primary!)
-		choose case l_status
-			case New!,NewModified!
-				gf_llena_claves(idw_control,idw_detalles,i)	
-		end choose
-	Next
-	IF idw_detalles.Trigger Event ue_grabar() = 1 THEN
-		Commit;
-		idw_control.ResetUpdate()
-	ELSE
-		RollBack;
-	END IF
-
-//END IF
-
 end event
 
 type cb_copy from commandbutton within w_m_preventa_finca
@@ -744,7 +749,7 @@ event ue_modificar_inicial pbm_custom46
 event ue_fila_anterior pbm_custom56
 integer x = 9
 integer y = 736
-integer width = 4050
+integer width = 4416
 integer height = 1252
 integer taborder = 20
 string title = "d_m_detalle_ramo_standing"
@@ -813,12 +818,12 @@ CHOOSE CASE dwo.name
 		ll_numerocajas = Long(data)
 
 		IF ll_numerocajas <= 0 THEN
-			MessageBox('Error','Número de cajas debe ser mayor que cero')
+			MessageBox('Error','NÃºmero de cajas debe ser mayor que cero')
 			Return 1
 		END IF
 		ll_cajasentregadas = This.GetItemNumber(row, 'drso_can_entr')
 		IF ll_numerocajas <= ll_cajasentregadas THEN
-			MessageBox('Error','Número de cajas debe ser mayor que las cajas entregadas')
+			MessageBox('Error','NÃºmero de cajas debe ser mayor que las cajas entregadas')
 			Return 1
 		END IF
 		
@@ -864,7 +869,7 @@ nvo_funciones_facturacion lfunciones_facturacion
 IF This.GetRow() < This.RowCount() THEN
 	ls_x = This.GetItemString(This.GetRow() + 1, "drso_pod_drso")
 	IF ls_x = 'D' THEN
-		MessageBox('Advertencia', 'No puede ingresar líneas intermedias en cajas mixtas.', Exclamation!)
+		MessageBox('Advertencia', 'No puede ingresar lÃ­neas intermedias en cajas mixtas.', Exclamation!)
 		Return -1
 	END IF
 END IF
@@ -908,7 +913,8 @@ IF This.RowCount() > 0 AND This.GetRow() > 0 THEN
 	This.Object.drso_cod_finc.Initial = String(il_codigoFinca)	// 23-04-2018
 ELSE
 	SetNull(ll_tipo_caja)
-	SetNull(ll_marca)
+//	SetNull(ll_marca)
+	ll_marca = idw_control.getitemnumber(idw_control.getrow(), "sord_cod_cmar")	// 11-06-2019
 	This.Object.drso_caj_inic.Initial = String(1)
 	This.Object.drso_caj_fina.Initial = String(0)
 	This.Object.drso_num_caja.Initial = String(0)
@@ -938,16 +944,12 @@ IF This.GetRow() = 1 THEN
 	END IF
 END IF
 
-This.Object.drso_cod_caja.Initial = String(ll_tipo_caja)				// 24-05-2018
-This.Object.drso_cod_cmar.Initial = String(ll_marca)					// 24-05-2018
-This.Object.drso_cod_usua.Initial = String(gnv_ctrdw.il_usuario)	// 20-05-2019
+This.Object.drso_cod_caja.Initial = String(ll_tipo_caja)	// 24-05-2018
+This.Object.drso_cod_cmar.Initial = String(ll_marca)	// 24-05-2018
 
 
 gnv_ctrdw.ii_fila = InsertRow(ll_new + 1)
 ScrollToRow(gnv_ctrdw.ii_fila)
-
-//This.SetItem(gnv_ctrdw.ii_fila, 'drso_cod_caja', ll_tipo_caja)	// 24-05-2018
-//This.SetItem(gnv_ctrdw.ii_fila, 'drso_cod_cmar', ll_marca)	// 24-05-2018
 
 IF NOT IsNull(is_primera_columna) THEN SetColumn(is_primera_columna)
 Modify("DataWindow.HorizontalScrollPosition = 0")
@@ -1119,19 +1121,11 @@ IF This.GetRow() > 0 AND NOT ib_buscar THEN
 	
 	il_cliente = This.GetItemNumber(This.GetRow(), 'sord_cod_clpv')
 
-	idw_detalles.SetReDraw(False)
-	IF idw_detalles.GetChild("drso_cod_cmar", ldw_child) = 1 AND &
-		NOT IsNull(il_cliente) THEN
-		ldw_child.SetFilter("cmar_cod_clpv = " + String(il_cliente) + &
-			" and cmar_cod_empr = " + String(gnv_ctrdw.il_empresa))
-		ldw_child.Filter()
-	END IF
-	idw_detalles.SetReDraw(True)
-
 	wf_filtra_subclientes()
 	wf_filtra_notify(0)
 	wf_filtraCiudad()
 	wf_filtraCuartoFrio(0)
+	wf_filtraCajaMarcada()
 END IF
 
 //messagebox(string(ib_buscar), string(ib_nuevo) + ' ' + string(dw_1.RowCount()))
@@ -1159,8 +1153,6 @@ Long ll_codigoVentaTemporada
 ll_codigoVentaTemporada = lparametros_floricolas.of_getpreventaventatemporada ( gi_finca )
 This.Object.sord_cod_temv.Initial = String(ll_codigoVentaTemporada)
 //setitem(getrow(),"sord_cod_temv", ll_codigoVentaTemporada)
-
-This.Object.sord_cod_usua.Initial = String(gnv_ctrdw.il_usuario)	// 20-05-2019
 
 CALL Super::ue_nuevo
 
@@ -1283,6 +1275,9 @@ CHOOSE CASE dwo.name
 		This.Object.sord_cod_cfri[row] = gnv_ctrdw.il_nulo
 		This.Object.pais[row] = gnv_ctrdw.il_nulo
 		This.Object.sord_cod_ciud[row] = gnv_ctrdw.il_nulo
+
+		This.Object.sord_cod_cmar[row] = gnv_ctrdw.il_nulo	// 11-06-2019
+		Post 	wf_filtraCajaMarcada()
 	CASE 'sord_cod_envo'
 		FOR ll_cont = 1 TO dw_deta.RowCount()
 			dw_deta.SetItem(ll_cont, 'drso_cod_envo', data)
