@@ -12,7 +12,7 @@ global nvo_controles_datawin nvo_controles_datawin
 
 type variables
 Public:
-	Long    ii_sesion_id
+	Long ii_sesion_id
 	Integer ii_n_menu = 0
 	
 	String  is_modulo
@@ -20,34 +20,43 @@ Public:
 	Integer ii_coneccion // Que base esta trabajando
 	
 /* Globales del sistema */
-	Long    il_usuario
-	Long    il_empresa
-	Long    il_sucursal
-	Long    il_moneda
-	Long    il_bodega						// 28/04/2017
+	Long il_usuario
+	Long il_empresa
+	Long il_sucursal
+	Long il_moneda
+	Long il_bodega						// 28/04/2017
 	Integer ii_modulo
 	Integer ii_fila
-	Date    ida_fecha_sistema
-	Long    il_nulo
-	String  is_nulo
-	Date    ida_fechaDefault	    // Fecha default del PB
-	String  is_nombreArchivoIni	 // 30-01-2020
+	Date ida_fecha_sistema
+	Long il_nulo
+	String is_nulo
+	Date ida_fechaDefault	// Fecha default del PB
 
+	// Colores
+	Long il_colorInactivo= rgb(192,192,192) //80269528				// Buttom Face	rgb(166,166,166)
+	Long il_colorActivo 	= 16777215				// Blanco
+	Long il_colorCero 	= RGB(255,255,0)		// Amarillo
+	Long il_colorNulo 	= RGB(255,0,0)			// Por definir
+	
+	// 31-03-2017
+	Long il_colorTerminado  = RGB(152,251,152)			// Verde
+	Long il_colorModificado = RGB(255,160,122)			// Tomate
+	Long il_colorResaltar   = RGB(000,000,255)			// Azul			// 17-10-2018
 
 	// Nro de digitos de los comprobantes contables
-	Long    il_nroDigitosCompContables = 8
-	String  is_nroDigitosCompContables
+	Long il_nroDigitosCompContables = 8
+	String is_nroDigitosCompContables
 
-	Long    il_ManejadorMail			// 20-10-2017
+	Long il_ManejadorMail			// 20-10-2017
 	
 	
 /* Contabilidad */		
-	Long    il_ejercicio, il_periodo,il_moneda_base,il_moneda_ext
-	String  is_lotes
+	Long il_ejercicio, il_periodo,il_moneda_base,il_moneda_ext
+	String is_lotes
 	
 /* Inventario */
 	Integer ii_cant, ii_reconoce
-	String  as_nombre, is_codigo_prod
+	String as_nombre, is_codigo_prod
 //	String is_tip_trans_r1,is_tip_trans_r2,is_tip_trans_r3,is_prod_like,is_sucursal_f
 //	date idt_desde_r,idt_hasta_r
 
@@ -55,13 +64,13 @@ Public:
 /* Documentos electronicos */
 	// 24-11-2014
 	Constant String cte_soloNumeros = '[0-9]'
-	Constant Long   cte_repiteNumeros = 5
+	Constant Long cte_repiteNumeros = 5
 	
-	String  is_formatoValido
-	String  is_formatoMsg			// est-pem-secuencia [###-###-#########] segun prms
-	Long    il_nroDigitoEsta		// Definido en archivo ini del sistema Formato
-	Long    il_nroDigitoPEmi		// Definido en archivo ini del sistema Formato
-	Long    il_nroDigitoSecu		// Definido en archivo ini del sistema Formato
+	String is_formatoValido
+	String is_formatoMsg			// est-pem-secuencia [###-###-#########] segun prms
+	Long il_nroDigitoEsta		// Definido en sofia.ini Formato
+	Long il_nroDigitoPEmi		// Definido en sofia.ini Formato
+	Long il_nroDigitoSecu		// Definido en sofia.ini Formato
 	// FIN 24-11-2014
 
 end variables
@@ -95,8 +104,6 @@ public subroutine of_inserta_blanco_dddw (datawindow adw_control)
 public function string of_getempresaini (string as_grupo, string as_clave, string as_default)
 public subroutine of_poswinfinal (window aw_actual)
 public subroutine of_poswininicio (window aw_actual)
-public function integer of_exportarconlogo (datawindow adw_datos, string as_nombrearchivo, string as_carpetadestino)
-public function integer of_exportarconlogo (datastore ads_datos, string as_nombrearchivo, string as_carpetadestino)
 end prototypes
 
 event type integer ue_validadocumentoelectronico(string as_clave, string as_numerodocumento);/*
@@ -462,8 +469,7 @@ lvalores_iniciales.of_getCodigoFincaDefecto(il_empresa)	// 01-09-2017
 // Porgrama de correo
 lvalores_iniciales.of_getCodigoMailDefecto(il_empresa)	// 20-10-2017
 
-// Nombre del archivo INI
-is_nombreArchivoIni = GetApplication().Dynamic af_name_app() + ".ini"
+
 end subroutine
 
 public function boolean of_activa_opcion (datawindow adw_control, string as_opcion);/*
@@ -1187,148 +1193,6 @@ IF lu_alto > 0 OR lu_ancho > 0 THEN
 END IF
 
 end subroutine
-
-public function integer of_exportarconlogo (datawindow adw_datos, string as_nombrearchivo, string as_carpetadestino);/*
-Name: of_exportarConLogo
-	
-	
-Autor : Juan Pablo
-Create: 39-04-2021
-
-PRMS:
-	adw_datos
-	as_nombreArchivo
-	as_carpetaDestino
-*/
-String  ls_pathTMP
-String  ls_nombreImpresora
-String  ls_archivoOrigen, ls_archivoDestino
-String  ls_nomArchivoAux
-Boolean lb_existe
-Integer li_ret
-
-
-// Verifica impresora
-ls_nombreImpresora = ProfileString(gs_path + is_nombreArchivoINI,'Documentos Electronicos','impresora','')
-IF ls_nombreImpresora = '' THEN
-	MessageBox('Error', 'Impresora PDF no definida.')
-	Return -1
-END IF
-
-
-// Verifica que la carpeta tmp este creada
-ls_pathTMP = gs_path + vg.A-TMP-PDF
-IF NOT DirectoryExists ( ls_pathTMP ) THEN
-	IF CreateDirectory ( ls_pathTMP ) = -1 THEN Return -1
-END IF
-
-
-// Default
-ls_nomArchivoAux  = Trim(Mid(as_nombreArchivo,1,31))
-ls_archivoOrigen  = ls_pathTMP + ls_nomArchivoAux + '.pdf'
-ls_archivoDestino = as_carpetaDestino + as_nombreArchivo + '.pdf'
-
-
-// Envia a la impresora PDFCreator y espera que se cree el archivo
-adw_datos.Modify("DataWindow.Print.DocumentName='" + ls_nomArchivoAux   + "'")
-adw_datos.Modify("DataWindow.Print.PrinterName='"  + ls_nombreImpresora + "'")
-
-adw_datos.Print()
-
-
-lb_existe = FileExists (ls_archivoOrigen)
-DO WHILE NOT lb_existe
-	lb_existe = FileExists (ls_archivoOrigen)
-LOOP
-
-Sleep(1)
-
-
-// Copia y elimina el archivo temporal
-li_ret = FileCopy(ls_archivoOrigen, ls_archivoDestino, True)
-IF li_ret < 0 THEN
-	MessageBox('Error ' + String(li_ret), 'Archivo no pudo ser creado.')
-	Return -1
-END IF
-
-IF FileExists (ls_archivoOrigen) THEN
-	lb_existe = FileDelete(ls_archivoOrigen)
-END IF
-
-
-Return 1
-
-//adw_datos.Modify("p_logo.Filename='" + is_nombreArchivoLog + "'")	// 15-08-2018
-
-end function
-
-public function integer of_exportarconlogo (datastore ads_datos, string as_nombrearchivo, string as_carpetadestino);/*
-Name: of_exportarConLogo
-	
-	
-Autor : Juan Pablo
-Create: 39-04-2021
-
-PRMS:
-	ads_datos
-	as_nombreArchivo
-	as_carpetaDestino
-*/
-String  ls_pathTMP
-String  ls_nombreImpresora
-String  ls_archivoOrigen, ls_archivoDestino
-String  ls_nomArchivoAux
-Boolean lb_existe
-Integer li_ret
-
-
-// Verifica que la carpeta tmp este creada
-ls_pathTMP = gs_path + vg.A-TMP-PDF
-IF NOT DirectoryExists ( ls_pathTMP ) THEN
-	IF CreateDirectory ( ls_pathTMP ) = -1 THEN Return -1
-END IF
-
-
-// Default
-ls_nomArchivoAux  = Trim(Mid(as_nombreArchivo,1,31))
-ls_archivoOrigen  = ls_pathTMP + ls_nomArchivoAux + '.pdf'
-ls_archivoDestino = as_carpetaDestino + as_nombreArchivo + '.pdf'
-
-
-// Envia a la impresora PDFCreator y espera que se cree el archivo
-ls_nombreImpresora = ProfileString(is_nombreArchivoINI,'Documentos Electronicos','impresora','')
-
-ads_datos.Modify("DataWindow.Print.DocumentName='" + ls_nomArchivoAux   + "'")
-ads_datos.Modify("DataWindow.Print.PrinterName='"  + ls_nombreImpresora + "'")
-
-ads_datos.Print()
-
-
-lb_existe = FileExists (ls_archivoOrigen)
-DO WHILE NOT lb_existe
-	lb_existe = FileExists (ls_archivoOrigen)
-LOOP
-
-Sleep(1)
-
-
-// Copia y elimina el archivo temporal
-li_ret = FileCopy(ls_archivoOrigen, ls_archivoDestino, True)
-IF li_ret < 0 THEN
-	MessageBox('Error ' + String(li_ret), 'Archivo no pudo ser creado.')
-	Return -1
-END IF
-
-IF FileExists (ls_archivoOrigen) THEN
-	lb_existe = FileDelete(ls_archivoOrigen)
-END IF
-
-
-Return 1
-
-//ads_datos.Modify("p_logo.Filename='" + is_nombreArchivoLog + "'")	// 15-08-2018
-
-end function
 
 on nvo_controles_datawin.create
 call super::create
